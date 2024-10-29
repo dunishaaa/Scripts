@@ -1,0 +1,136 @@
+#!/bin/bash
+
+SAVEIF=$IFS
+IFS=$'\n'
+
+python_file=""
+scene_name=""
+cur_dir=$(pwd)
+quality=""
+quality_flag=""
+scenes=""
+
+
+print_usage(){
+	echo "Usage: manimr [OPTIONS] <file_name> <scene_name>"
+	echo "Options:"
+	echo " --help 	Display usage"
+	echo " -h		Render with high quality 	1080p60"
+	echo " -k		Render with in 4K		4Kp120"
+	echo " -l		Render with low quality		420p15"
+	echo " -n		Show scene names"
+	echo " -s		Render scene section"
+}
+missing_file(){
+	echo "ERROR: Missing file"
+	print_usage
+	exit 1
+}
+get_scenes(){
+	scenes=$(grep -oh "\w*(Scene)" $python_file | sed 's/(Scene)//')
+	scenes=($scenes)
+
+	echo "Select a scene to render..." 
+	for ((i = 0; i<${#scenes[@]}; i++)) 
+	do 
+		ti=i 
+		((ti++)) 
+		printf "\t$ti) ${scenes[$i]}\n" 
+	done 
+	read -p "Choose scene: " n_scene 
+	((n_scene--)) 
+	scene_name=${scenes[n_scene]} 
+}
+handle_options(){
+	if [[ "$1" != -* ]]; then
+		echo "ERROR: Flag must be specified"
+		print_usage
+		exit 1
+	fi
+
+	while [ $# -gt 0 ]; do
+		case $1 in
+		--help)
+			print_usage
+			exit 0
+			;;
+		-h)  
+
+			quality="1080p60"
+			quality_flag="h"
+			break
+			;;
+		-l)
+
+			quality="480p15"
+			quality_flag="l"
+			break
+			;;
+		-n) 
+			if [[ -z "$2" ]]; then
+				missing_file
+			fi
+			python_file=$2
+			scenes=$(grep -oh "\w*(Scene)" $python_file | sed 's/(Scene)//')
+			scenes=($scenes)
+
+			echo "Scenes in $python_file are:"
+			for ((i = 0; i<${#scenes[@]}; i++))
+			do
+				ti=i
+				((ti++))
+				printf "\t$ti) ${scenes[$i]}\n"
+			done
+			exit 0
+			;;
+		\?)
+			echo "ERROR: invalid argument"
+			print_usage
+			exit 1
+			;;
+		*)
+			echo "ERROR: invalid $1 option"
+			print_usage
+			exit 1 
+			;;
+			esac
+			shift
+	done
+}
+
+validate_render(){
+	shift
+	if [[ -z "$1" ]]; then
+		missing_file
+	fi
+
+	python_file=$1
+
+	if [[ -z "$2" ]]; then
+		get_scenes 
+	else
+		scene_name=$2
+	fi
+
+}
+
+render(){
+	manim -q$quality_flag $python_file $scene_name
+	output_folder=${python_file%.py}
+	pt_rnd_video=$cur_dir"/media/videos/"$output_folder"/"$quality"/"$scene_name".mp4"
+	res=$(ls $pt_rnd_video)
+	echo $pt_rnd_video
+	if [[ ! -z res ]]; then
+		firefox $pt_rnd_video
+	fi
+}
+
+handle_options "$@"
+validate_render "$@"
+render "$@"
+
+
+
+
+
+
