@@ -1,0 +1,18 @@
+#!/bin/bash
+
+
+file=$1
+skip_scene="self.next_section(skip_animations=True)"
+render_scene="self.next_section(skip_animations=False)"
+
+sed -i "s/\#ss/$skip_scene/g" $file
+sed -i "s/\#rs/$render_scene/g" $file
+
+
+sed -i "s/$skip_scene/\#ss/g" $file
+sed -i "s/$render_scene/\#rs/g" $file
+
+
+
+
+
