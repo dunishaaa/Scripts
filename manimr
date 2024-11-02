@@ -3,9 +3,8 @@
 SAVEIF=$IFS
 IFS=$'\n'
 
-python_file=""
+file_path=""
 scene_name=""
-cur_dir=$(pwd)
 quality=""
 quality_flag=""
 scenes=""
@@ -25,13 +24,15 @@ print_usage(){
 	printf " -s\t\tRender scene section. Scenes marked with #rs\n"
 	printf "\t\tare rendered and #ss are skipped\n"
 }
+
 missing_file(){
 	echo "ERROR: Missing file"
 	print_usage
 	exit 1
 }
+
 get_scenes(){
-	scenes=$(grep -oh "\w*(Scene)" $python_file | sed 's/(Scene)//')
+	scenes=$(grep -oh "\w*(Scene)" $file_path | sed 's/(Scene)//')
 	scenes=($scenes)
 
 	echo "Select a scene to render..." 
@@ -45,6 +46,7 @@ get_scenes(){
 	((n_scene--)) 
 	scene_name=${scenes[n_scene]} 
 }
+
 handle_options(){
 	if [[ "$1" != -* ]]; then
 		echo "ERROR: Flag must be specified"
@@ -74,11 +76,11 @@ handle_options(){
 			if [[ -z "$2" ]]; then
 				missing_file
 			fi
-			python_file=$2
-			scenes=$(grep -oh "\w*(Scene)" $python_file | sed 's/(Scene)//')
+			file_path=$2
+			scenes=$(grep -oh "\w*(Scene)" $file_path | sed 's/(Scene)//')
 			scenes=($scenes)
 
-			echo "Scenes in $python_file are:"
+			echo "Scenes in $file_path are:"
 			for ((i = 0; i<${#scenes[@]}; i++))
 			do
 				ti=i
@@ -91,10 +93,9 @@ handle_options(){
 			if [[ -z "$3" ]]; then
 				missing_file
 			fi
-			python_file=$3
-			echo "inside sed $python_file"
-			sed -i "s/\#ss/$skip_scene/g" $python_file
-			sed -i "s/\#rs/$render_scene/g" $python_file
+			file_path=$3
+			sed -i "s/\# *ss/$skip_scene/g" $file_path
+			sed -i "s/\# *rs/$render_scene/g" $file_path
 			;;
 
 		\?)
@@ -123,7 +124,7 @@ validate_render(){
 		missing_file
 	fi
 
-	python_file=$1
+    file_path=$(realpath $1)
 
 	if [[ -z "$2" ]]; then
 		get_scenes 
@@ -134,16 +135,23 @@ validate_render(){
 }
 
 render(){
-	manim -q$quality_flag $python_file $scene_name
+
+	manim -q$quality_flag $file_path $scene_name
+    python_file=${file_path##*/}
 	output_folder=${python_file%.py}
+
+    cur_dir=$(echo $file_path | sed "s/\/\w*\..*$//g")
+
+
+
 	pt_rnd_video=$cur_dir"/media/videos/"$output_folder"/"$quality"/"$scene_name".mp4"
 	res=$(ls $pt_rnd_video)
 	if [[ ! -z res ]]; then
 		firefox $pt_rnd_video
 	fi
-
-	sed -i "s/$skip_scene/\#ss/g" $python_file
-	sed -i "s/$render_scene/\#rs/g" $python_file
+#
+	sed -i "s/$skip_scene/\# ss/g" $file_path
+	sed -i "s/$render_scene/\# rs/g" $file_path
 }
 
 handle_options "$@"
