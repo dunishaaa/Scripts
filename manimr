@@ -8,6 +8,7 @@ scene_name=""
 quality=""
 quality_flag=""
 scenes=""
+render_by_section=0
 
 
 skip_scene="self.next_section(skip_animations=True)"
@@ -89,13 +90,11 @@ handle_options(){
 			exit 0
 			;;
 		-h)  
-
 			quality="1080p60"
 			quality_flag="h"
 			break
 			;;
 		-l)
-
 			quality="480p15"
 			quality_flag="l"
 			break
@@ -123,12 +122,10 @@ handle_options(){
 			exit 0
 			;;
 		-s)
-			if [[ -z "$3" ]]; then
+			if [[ -z "$4" ]]; then
 				missing_file
 			fi
-			file_path=$3
-			sed -i "s/\# *ss/$skip_scene/g" $file_path
-			sed -i "s/\# *rs/$render_scene/g" $file_path
+            render_by_section=1
 			;;
 
 		\?)
@@ -152,12 +149,12 @@ validate_render(){
 	fi
 
 	shift
-	if [[ -z "$1" ]]; then
+	if [[ -z "$2" ]]; then
 		missing_file
 	fi
 
-    file_path=$(realpath $1)
-    line_number=$2
+    file_path=$(realpath $2)
+    line_number=$1
 
     get_scene $file_path $line_number
 
@@ -165,13 +162,33 @@ validate_render(){
 
 render(){
 
-    echo "Rendering $file_path $scene_name"
-	#manim -q$quality_flag $file_path $scene_name
+    copy_file_path="${file_path%/*}" #/${output_folder}_copy.py"
 
     python_file=${file_path##*/}
+
 	output_folder=${python_file%.py}
 
-    cur_dir=$(echo $file_path | sed "s/\/\w*\..*$//g")
+    copy_file_path="${copy_file_path}/${output_folder}_copy.py"
+    output_folder="${output_folder}_copy"
+    echo $copy_file_path
+	echo $output_folder
+
+    cp $file_path $copy_file_path
+
+    if [ $render_by_section -eq 1 ]; then
+        echo "Rendering by sections"
+        sed -i "s/\# *ss/$skip_scene/g" $copy_file_path
+        sed -i "s/\# *rs/$render_scene/g" $copy_file_path
+    fi
+
+    echo "Rendering $copy_file_path $scene_name"
+	manim -q$quality_flag $copy_file_path $scene_name
+
+    rm $copy_file_path
+
+
+
+    cur_dir=$(echo $copy_file_path | sed "s/\/\w*\..*$//g")
 
 
 
@@ -180,9 +197,7 @@ render(){
 	if [[ ! -z res ]]; then
 		firefox $pt_rnd_video
 	fi
-#
-	sed -i "s/$skip_scene/\# ss/g" $file_path
-	sed -i "s/$render_scene/\# rs/g" $file_path
+
 }
 
 handle_options "$@"
